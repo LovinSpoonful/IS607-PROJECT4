@@ -1,0 +1,92 @@
+---
+title: "IS607 - Spring 2016 - Project 4"
+author: "Rob Hodde"
+date: "April 13, 2016"
+output: html_document
+---
+
+For Project 4, you should take information from a relational database and migrate it to a NoSQL database of your own choosing. 
+
+For the relational database, you might use the flights database, the tb database, the "data skills" database your team created for Project 3, or another database of your own choosing or creation.
+
+For the NoSQL database, you may use MongoDB, Neo4j (which we introduce in Week 12), or another NoSQL database of your choosing.
+
+Your migration process needs to be reproducible.  R code is encouraged, but not required.  You should also briefly describe the advantages and disadvantages of storing the data in a relational database vs. your NoSQL database.
+
+You may work on a small team on this project.  Due before our Meetup on Thursday April 21st.
+
+--------
+
+First we will connect to the Project 3 MYSQL database, *Skill*.
+
+```{r}
+
+library(mongolite)
+library(RODBC)
+
+# Establish connection to the database
+cnString <- "MySQL_ANSI;SERVER=db4free.net;DATABASE=skill;UID=project3;PASSWORD=CUNYRBridge4;OPTION=3;" # live
+db <- odbcConnect(cnString, case="nochange")
+
+dbMongo <- "test03"
+
+```
+
+--------
+
+Next we will import all the *Skill* data to a local Mongo database which we will call `r dbMongo`.  
+
+
+```{r}
+
+tbl <- sqlTables(db,tableType = "TABLE", tableName = "tbl_%") #Get the list of tables in MySQL database
+
+# loop thru each table and copy it to the local Mongo DB
+for (i in 1:nrow(tbl)){
+ df <- sqlQuery(db,paste("SELECT * FROM ", tbl[i,3], ";")) # retrieve the data
+  m <- mongo(collection = tbl[i,3], db = dbMongo, url = "mongodb://localhost", verbose = TRUE) #create the Mongo collection
+  m$insert(df, pagesize = 1000) # Insert the dataframe into the Mongo DB collection.
+}
+
+```
+
+Now we can retrieve some data from the Mongo database.
+
+```{r}
+
+n <- mongo(collection = "tbl_data", db = dbMongo, url = "mongodb://localhost")
+my_nosql_data <- n$find() #load the data from the Mongo DB collection back into a data frame
+head(my_nosql_data)
+
+```
+
+-------- 
+
+Knowing full well that I'm part of the uninitiated, it seems that the use of No-SQL databases would be a rather large step backward, compared to what I am accustomed to using today (Microsoft SQL Server).  For example, in MS SQL Server 2005 and beyond, one can use the NVARCHAR(MAX) data type to store text objects up to 2GB, including JSON, XML, HTML documents.  If that is insufficent, BLOBs can be used to store any digital artifact of any construction or size.  There is no limit to the size of a SQL database.  
+
+MS-SQL comes with a very broad and powerful language - TSQL.  It appears that MongoDB is a very new product with very limited development language.  The Mongo language availabe in R seems needlessly complex.  For example, writing this seems overly burdensome on a human:  
+
+
+   ```data <- mong$find(paste0('{"dte":{"$gt": { "$date" : { "$numberLong" : "', d, '" } } } }'))``` 
+
+Compared to writing this:  
+
+   ```SELECT * FROM tbl_Data WHERE ExpectedDate > GETDATE()```  
+   
+It seems strange to move toward cryptic syntax and away from the relatively natural language of SQL.
+
+MS-SQL ships with a terrific IDE called SQL Server Management Studio (SSMS). Even the very best open-source RDBMS studio I can find - MySQL Workbench - contains perhaps 5% of the functionality of SSMS, and so far I've not found an IDE for MongoDB.  It is disturbing.    
+
+In the same way that companies like Red Hat have commercialized open source technologies to provide reliability and quality assurance (thereby making them proprietary closed systems, in a way), something similar may need to take place for Mongo.  Teradata, IBM, Cloudera and others do offer No SQL database platforms, leveraging Hadoop, etc.
+
+So at this point I'm remaining curious - to keep exploring No-SQL tools, to build a new lens through which to view problem solving with these open-source tools, rather than the proprietary and expensive tools I've grown accustomed to using over the past decade. There's great potential and much room to explore.  
+
+
+
+
+
+
+
+
+
+
